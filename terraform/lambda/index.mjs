@@ -16,7 +16,10 @@ export const handler = async (event) => {
   };
 
   try {
-    switch (event.routeKey) {
+    // Manejo de rutas según API Gateway
+    const route = event.routeKey || `${event.httpMethod} ${event.resource}`;
+
+    switch (route) {
       case "OPTIONS /tareas":
         body = "OK";
         break;
@@ -27,32 +30,45 @@ export const handler = async (event) => {
         break;
 
       case "POST /tareas":
-      case "PUT /tareas": // Ambos usan PutCommand (si el ID existe, lo actualiza; si no, lo crea)
+      case "PUT /tareas":
         const requestJSON = JSON.parse(event.body);
+        
+        // Validamos y limpiamos los datos antes de guardar
         const item = {
-          id: requestJSON.id || Date.now().toString(),
-          info: requestJSON.info
+          id: String(requestJSON.id || Date.now()), // Forzamos String para evitar errores en Dynamo
+          info: String(requestJSON.info || "Tarea sin título"),
+          completada: requestJSON.completada === true // Forzamos booleano puro
         };
-        await dynamo.send(new PutCommand({ TableName: tableName, Item: item }));
+
+        await dynamo.send(new PutCommand({ 
+          TableName: tableName, 
+          Item: item 
+        }));
+        
         body = item;
         break;
 
       case "DELETE /tareas":
-        const { id } = JSON.parse(event.body);
+        const requestDelete = JSON.parse(event.body);
+        const idToDelete = requestDelete.id;
         await dynamo.send(new DeleteCommand({
           TableName: tableName,
-          Key: { id }
+          Key: { id: String(idToDelete) }
         }));
-        body = `Tarea ${id} eliminada`;
+        body = `Tarea ${idToDelete} eliminada`;
         break;
 
       default:
-        throw new Error(`Ruta no soportada: ${event.routeKey}`);
+        throw new Error(`Ruta no soportada: ${route}`);
     }
   } catch (err) {
     statusCode = 400;
-    body = err.message;
+    body = { error: err.message };
   }
 
-  return { statusCode, body: JSON.stringify(body), headers };
+  return { 
+    statusCode, 
+    body: JSON.stringify(body), 
+    headers 
+  };
 };
