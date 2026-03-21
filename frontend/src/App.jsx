@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-// 1. Importaciones de AWS Amplify
 import { Authenticator } from '@aws-amplify/ui-react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
@@ -39,7 +38,10 @@ function App() {
   const manejarAccion = async () => {
     if (!nuevaTarea.trim()) return;
     const metodo = editandoId ? "PUT" : "POST";
-    const body = editandoId ? { id: editandoId, info: nuevaTarea } : { info: nuevaTarea };
+    // Al crear una nueva, por defecto completada es false
+    const body = editandoId 
+      ? { id: editandoId, info: nuevaTarea } 
+      : { info: nuevaTarea, completada: false };
 
     await fetch(API_URL, {
       method: metodo,
@@ -49,6 +51,21 @@ function App() {
 
     setNuevaTarea("");
     setEditandoId(null);
+    obtenerTareas();
+  };
+
+  // NUEVA FUNCIÓN: Mueve la tarea entre Pendientes y Realizados
+  const alternarEstado = async (tarea) => {
+    const nuevoEstado = !tarea.completada;
+    await fetch(API_URL, {
+      method: "PUT",
+      headers: await getHeaders(),
+      body: JSON.stringify({ 
+        id: tarea.id, 
+        info: tarea.info, 
+        completada: nuevoEstado 
+      }),
+    });
     obtenerTareas();
   };
 
@@ -65,28 +82,27 @@ function App() {
     obtenerTareas(); 
   }, []);
 
+  // Filtrado de listas
+  const pendientes = tareas.filter(t => !t.completada);
+  const realizadas = tareas.filter(t => t.completada);
+
   return (
     <Authenticator.Provider>
       <div className="App">
-        {/* --- CABECERA PÚBLICA (SIEMPRE VISIBLE) --- */}
         <header>
           <h1>Mis Tareas en AWS</h1>
         </header>
         <div className="separator"></div>
 
-        {/* --- EL GUARDIÁN: SOLO PROTEGE LO QUE ESTÁ ADENTRO --- */}
         <Authenticator>
           {({ signOut, user }) => (
-            /* --- ESTA ES LA NUEVA TARJETA BLANCA --- */
             <main className="auth-card-container">
               
-              {/* 1. Panel de Usuario (Email y Botón) */}
               <div className="user-info-panel">
                 <span className="user-email">Bienvenido, <b>{user.signInDetails?.loginId}</b></span>
                 <button onClick={signOut} className="btn-logout">Cerrar Sesión</button>
               </div>
 
-              {/* 2. Formulario CRUD (Input y Botón) */}
               <div className="input-group">
                 <input 
                   className="task-input"
@@ -99,21 +115,40 @@ function App() {
                 </button>
               </div>
               
-              {/* 3. Lista de Tareas */}
-              <ul className="task-list-display">
-                {tareas.map(t => (
-                  <li key={t.id} className="task-item-card">
-                    <span className="task-content-text">{t.info}</span>
-                    <div className="task-actions-group">
-                      <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="btn-icon">✏️</button>
-                      <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
-                    </div>
-                  </li>
-                ))}
-                {tareas.length === 0 && (
-                  <p className="no-tasks-msg">No hay tareas pendientes.</p>
-                )}
-              </ul>
+              <div className="dashboard-tareas">
+                {/* --- RECUADRO PENDIENTES --- */}
+                <div className="column-tareas">
+                  <h3>📌 Pendientes ({pendientes.length})</h3>
+                  <ul className="task-list-display">
+                    {pendientes.map(t => (
+                      <li key={t.id} className="task-item-card">
+                        <span className="task-content-text">{t.info}</span>
+                        <div className="task-actions-group">
+                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Marcar como realizada">✅</button>
+                          <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="btn-icon">✏️</button>
+                          <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* --- RECUADRO REALIZADOS --- */}
+                <div className="column-tareas">
+                  <h3>🏁 Realizados ({realizadas.length})</h3>
+                  <ul className="task-list-display completed-list">
+                    {realizadas.map(t => (
+                      <li key={t.id} className="task-item-card task-completed">
+                        <span className="task-content-text">{t.info}</span>
+                        <div className="task-actions-group">
+                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Desmarcar">🔄</button>
+                          <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </main>
           )}
         </Authenticator>
