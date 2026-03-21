@@ -29,6 +29,7 @@ function App() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
+      console.log("Tareas recibidas de AWS:", data);
       setTareas(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error obteniendo tareas:", error);
@@ -39,9 +40,14 @@ function App() {
     if (!nuevaTarea.trim()) return;
     const metodo = editandoId ? "PUT" : "POST";
     
-    const body = editandoId 
-      ? { id: String(editandoId), info: nuevaTarea, completada: false } 
-      : { info: nuevaTarea, completada: false };
+    // Al guardar una edición, mantenemos su estado de 'completada' si existe
+    const tareaExistente = tareas.find(t => t.id === editandoId);
+    
+    const body = { 
+      id: editandoId ? String(editandoId) : String(Date.now()), 
+      info: nuevaTarea, 
+      completada: tareaExistente ? tareaExistente.completada : false 
+    };
 
     await fetch(API_URL, {
       method: metodo,
@@ -51,12 +57,13 @@ function App() {
 
     setNuevaTarea("");
     setEditandoId(null);
-    obtenerTareas();
+    await obtenerTareas(); // Esperamos a que recargue
   };
 
   const alternarEstado = async (tarea) => {
     const nuevoEstado = !tarea.completada;
     
+    // Enviamos el cambio asegurando que el ID sea String
     await fetch(API_URL, {
       method: "PUT",
       headers: await getHeaders(),
@@ -66,7 +73,8 @@ function App() {
         completada: nuevoEstado 
       }),
     });
-    obtenerTareas();
+    
+    await obtenerTareas(); // Forzamos la recarga de las listas
   };
 
   const eliminarTarea = async (id) => {
@@ -75,15 +83,16 @@ function App() {
       headers: await getHeaders(),
       body: JSON.stringify({ id: String(id) }),
     });
-    obtenerTareas();
+    await obtenerTareas();
   };
 
   useEffect(() => { 
     obtenerTareas(); 
   }, []);
 
-  const pendientes = tareas.filter(t => !t.completada);
-  const realizadas = tareas.filter(t => t.completada);
+  // Filtrado dinámico basado en el campo 'completada'
+  const pendientes = tareas.filter(t => t.completada === false || !t.hasOwnProperty('completada'));
+  const realizadas = tareas.filter(t => t.completada === true);
 
   return (
     <Authenticator.Provider>
@@ -114,6 +123,7 @@ function App() {
               </div>
               
               <div className="dashboard-tareas">
+                {/* --- SECCIÓN PENDIENTES --- */}
                 <div className="column-tareas">
                   <h3>📌 Pendientes ({pendientes.length})</h3>
                   <ul className="task-list-display">
@@ -130,6 +140,7 @@ function App() {
                   </ul>
                 </div>
 
+                {/* --- SECCIÓN REALIZADOS --- */}
                 <div className="column-tareas">
                   <h3>🏁 Realizados ({realizadas.length})</h3>
                   <ul className="task-list-display completed-list">
