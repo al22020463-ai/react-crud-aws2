@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-
 import { Authenticator } from '@aws-amplify/ui-react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
@@ -29,25 +28,19 @@ function App() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
-      console.log("Tareas recibidas de AWS:", data);
       setTareas(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error obteniendo tareas:", error);
+      console.error("Error:", error);
     }
   };
 
   const manejarAccion = async () => {
     if (!nuevaTarea.trim()) return;
     const metodo = editandoId ? "PUT" : "POST";
+    const idActual = editandoId ? String(editandoId) : String(Date.now());
     
-    // Al guardar una edición, mantenemos su estado de 'completada' si existe
-    const tareaExistente = tareas.find(t => t.id === editandoId);
-    
-    const body = { 
-      id: editandoId ? String(editandoId) : String(Date.now()), 
-      info: nuevaTarea, 
-      completada: tareaExistente ? tareaExistente.completada : false 
-    };
+    // Al crear o editar texto, la mandamos a pendientes (false)
+    const body = { id: idActual, info: nuevaTarea, completada: false };
 
     await fetch(API_URL, {
       method: metodo,
@@ -57,13 +50,12 @@ function App() {
 
     setNuevaTarea("");
     setEditandoId(null);
-    await obtenerTareas(); // Esperamos a que recargue
+    await obtenerTareas();
   };
 
   const alternarEstado = async (tarea) => {
     const nuevoEstado = !tarea.completada;
     
-    // Enviamos el cambio asegurando que el ID sea String
     await fetch(API_URL, {
       method: "PUT",
       headers: await getHeaders(),
@@ -74,7 +66,7 @@ function App() {
       }),
     });
     
-    await obtenerTareas(); // Forzamos la recarga de las listas
+    await obtenerTareas();
   };
 
   const eliminarTarea = async (id) => {
@@ -86,27 +78,22 @@ function App() {
     await obtenerTareas();
   };
 
-  useEffect(() => { 
-    obtenerTareas(); 
-  }, []);
+  useEffect(() => { obtenerTareas(); }, []);
 
-  // Filtrado dinámico basado en el campo 'completada'
-  const pendientes = tareas.filter(t => t.completada === false || !t.hasOwnProperty('completada'));
+  // FILTROS SIMPLIFICADOS
   const realizadas = tareas.filter(t => t.completada === true);
+  const pendientes = tareas.filter(t => t.completada !== true);
 
   return (
     <Authenticator.Provider>
       <div className="App">
-        <header>
-          <h1>Mis Tareas en AWS</h1>
-        </header>
+        <header><h1>Mis Tareas en AWS</h1></header>
         <div className="separator"></div>
-
         <Authenticator>
           {({ signOut, user }) => (
             <main className="auth-card-container">
               <div className="user-info-panel">
-                <span className="user-email">Bienvenido, <b>{user.signInDetails?.loginId}</b></span>
+                <span>Bienvenido, <b>{user.signInDetails?.loginId}</b></span>
                 <button onClick={signOut} className="btn-logout">Cerrar Sesión</button>
               </div>
 
@@ -123,7 +110,6 @@ function App() {
               </div>
               
               <div className="dashboard-tareas">
-                {/* --- SECCIÓN PENDIENTES --- */}
                 <div className="column-tareas">
                   <h3>📌 Pendientes ({pendientes.length})</h3>
                   <ul className="task-list-display">
@@ -131,7 +117,7 @@ function App() {
                       <li key={t.id} className="task-item-card">
                         <span className="task-content-text">{t.info}</span>
                         <div className="task-actions-group">
-                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Completar">✅</button>
+                          <button onClick={() => alternarEstado(t)} className="btn-icon">✅</button>
                           <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="btn-icon">✏️</button>
                           <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
                         </div>
@@ -140,7 +126,6 @@ function App() {
                   </ul>
                 </div>
 
-                {/* --- SECCIÓN REALIZADOS --- */}
                 <div className="column-tareas">
                   <h3>🏁 Realizados ({realizadas.length})</h3>
                   <ul className="task-list-display completed-list">
@@ -148,7 +133,7 @@ function App() {
                       <li key={t.id} className="task-item-card task-completed">
                         <span className="task-content-text">{t.info}</span>
                         <div className="task-actions-group">
-                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Regresar">🔄</button>
+                          <button onClick={() => alternarEstado(t)} className="btn-icon">🔄</button>
                           <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
                         </div>
                       </li>

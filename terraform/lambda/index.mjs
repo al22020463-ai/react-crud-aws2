@@ -16,7 +16,6 @@ export const handler = async (event) => {
   };
 
   try {
-    // Manejo de rutas según API Gateway
     const route = event.routeKey || `${event.httpMethod} ${event.resource}`;
 
     switch (route) {
@@ -32,30 +31,24 @@ export const handler = async (event) => {
       case "POST /tareas":
       case "PUT /tareas":
         const requestJSON = JSON.parse(event.body);
-        
-        // Validamos y limpiamos los datos antes de guardar
         const item = {
-          id: String(requestJSON.id || Date.now()), // Forzamos String para evitar errores en Dynamo
-          info: String(requestJSON.info || "Tarea sin título"),
-          completada: requestJSON.completada === true // Forzamos booleano puro
+          id: String(requestJSON.id || Date.now()),
+          info: String(requestJSON.info || ""),
+          // Forzamos que guarde el booleano exacto
+          completada: requestJSON.completada === true 
         };
 
-        await dynamo.send(new PutCommand({ 
-          TableName: tableName, 
-          Item: item 
-        }));
-        
+        await dynamo.send(new PutCommand({ TableName: tableName, Item: item }));
         body = item;
         break;
 
       case "DELETE /tareas":
-        const requestDelete = JSON.parse(event.body);
-        const idToDelete = requestDelete.id;
+        const { id } = JSON.parse(event.body);
         await dynamo.send(new DeleteCommand({
           TableName: tableName,
-          Key: { id: String(idToDelete) }
+          Key: { id: String(id) }
         }));
-        body = `Tarea ${idToDelete} eliminada`;
+        body = `Tarea ${id} eliminada`;
         break;
 
       default:
@@ -66,9 +59,5 @@ export const handler = async (event) => {
     body = { error: err.message };
   }
 
-  return { 
-    statusCode, 
-    body: JSON.stringify(body), 
-    headers 
-  };
+  return { statusCode, body: JSON.stringify(body), headers };
 };
