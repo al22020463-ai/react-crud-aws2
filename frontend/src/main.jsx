@@ -12,8 +12,8 @@ Amplify.configure({
   Auth: {
     Cognito: {
       region: 'us-east-1',
-      userPoolId: 'us-east-1_YJcnL9tfu', // Ejemplo: us-east-1_abcd123
-      userPoolClientId: '1aglv7td5io8077rnict2j426o', // Ejemplo: 7abc1234567890
+      userPoolId: 'us-east-1_OA6gejk6z', // Ejemplo: us-east-1_abcd123
+      userPoolClientId: '7ddfh876d393k3mjqqghlnqc88', // Ejemplo: 7abc1234567890
       loginWith: {
         email: true
       }
