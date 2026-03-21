@@ -38,9 +38,9 @@ function App() {
   const manejarAccion = async () => {
     if (!nuevaTarea.trim()) return;
     const metodo = editandoId ? "PUT" : "POST";
-    // Al crear una nueva, por defecto completada es false
+    
     const body = editandoId 
-      ? { id: editandoId, info: nuevaTarea } 
+      ? { id: String(editandoId), info: nuevaTarea, completada: false } 
       : { info: nuevaTarea, completada: false };
 
     await fetch(API_URL, {
@@ -54,14 +54,14 @@ function App() {
     obtenerTareas();
   };
 
-  // NUEVA FUNCIÓN: Mueve la tarea entre Pendientes y Realizados
   const alternarEstado = async (tarea) => {
     const nuevoEstado = !tarea.completada;
+    
     await fetch(API_URL, {
       method: "PUT",
       headers: await getHeaders(),
       body: JSON.stringify({ 
-        id: tarea.id, 
+        id: String(tarea.id), 
         info: tarea.info, 
         completada: nuevoEstado 
       }),
@@ -73,7 +73,7 @@ function App() {
     await fetch(API_URL, {
       method: "DELETE",
       headers: await getHeaders(),
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id: String(id) }),
     });
     obtenerTareas();
   };
@@ -82,7 +82,6 @@ function App() {
     obtenerTareas(); 
   }, []);
 
-  // Filtrado de listas
   const pendientes = tareas.filter(t => !t.completada);
   const realizadas = tareas.filter(t => t.completada);
 
@@ -97,7 +96,6 @@ function App() {
         <Authenticator>
           {({ signOut, user }) => (
             <main className="auth-card-container">
-              
               <div className="user-info-panel">
                 <span className="user-email">Bienvenido, <b>{user.signInDetails?.loginId}</b></span>
                 <button onClick={signOut} className="btn-logout">Cerrar Sesión</button>
@@ -116,7 +114,6 @@ function App() {
               </div>
               
               <div className="dashboard-tareas">
-                {/* --- RECUADRO PENDIENTES --- */}
                 <div className="column-tareas">
                   <h3>📌 Pendientes ({pendientes.length})</h3>
                   <ul className="task-list-display">
@@ -124,7 +121,7 @@ function App() {
                       <li key={t.id} className="task-item-card">
                         <span className="task-content-text">{t.info}</span>
                         <div className="task-actions-group">
-                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Marcar como realizada">✅</button>
+                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Completar">✅</button>
                           <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="btn-icon">✏️</button>
                           <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
                         </div>
@@ -133,7 +130,6 @@ function App() {
                   </ul>
                 </div>
 
-                {/* --- RECUADRO REALIZADOS --- */}
                 <div className="column-tareas">
                   <h3>🏁 Realizados ({realizadas.length})</h3>
                   <ul className="task-list-display completed-list">
@@ -141,7 +137,7 @@ function App() {
                       <li key={t.id} className="task-item-card task-completed">
                         <span className="task-content-text">{t.info}</span>
                         <div className="task-actions-group">
-                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Desmarcar">🔄</button>
+                          <button onClick={() => alternarEstado(t)} className="btn-icon" title="Regresar">🔄</button>
                           <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
                         </div>
                       </li>
