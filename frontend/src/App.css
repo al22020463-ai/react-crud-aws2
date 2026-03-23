@@ -4,9 +4,10 @@
   --primary-hover: #535bf2;
   --danger: #ff4d4d;
   --edit: #ffa500;
-  --bg: #f8fafc;     /* Fondo gris azulado muy suave */
-  --card: #ffffff;   /* Blanco puro para las tarjetas */
-  --text-dark: #1e293b; /* Azul marino oscuro para máxima legibilidad */
+  --success: #22c55e; /* Verde moderno para tareas listas */
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text-dark: #1e293b;
   --text-muted: #64748b;
   --border: #e2e8f0; 
 }
@@ -50,7 +51,7 @@ h1 {
   opacity: 0.6;
 }
 
-/* --- PANEL DE USUARIO (ESPACIADO CORREGIDO) --- */
+/* --- PANEL DE USUARIO --- */
 .user-info-panel {
   width: 100%;
   display: flex;
@@ -79,7 +80,6 @@ h1 {
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  /* Espacio extra respecto al correo */
   margin-left: 20px; 
 }
 
@@ -88,7 +88,7 @@ h1 {
   transform: translateY(-1px);
 }
 
-/* --- INPUT DE TAREAS (VISIBILIDAD CORREGIDA) --- */
+/* --- INPUT DE TAREAS --- */
 .input-group {
   width: 100%;
   display: flex;
@@ -102,7 +102,6 @@ h1 {
   border-radius: 12px;
   border: 2px solid var(--border);
   background: #ffffff !important;
-  /* FORZAMOS COLOR OSCURO PARA VER LO QUE ESCRIBES */
   color: #1e293b !important; 
   font-size: 1rem;
   outline: none;
@@ -114,7 +113,6 @@ h1 {
   box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.1);
 }
 
-/* Estilo para el placeholder (el texto de fondo) */
 .task-input::placeholder {
   color: #94a3b8;
 }
@@ -135,7 +133,7 @@ h1 {
   box-shadow: 0 4px 12px rgba(100, 108, 255, 0.2);
 }
 
-/* --- LISTA DE TAREAS --- */
+/* --- LISTA DE TAREAS Y CHECKBOX --- */
 .task-list-display {
   width: 100%;
   list-style: none;
@@ -148,21 +146,44 @@ h1 {
   padding: 16px 20px;
   border-radius: 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: center; /* Alineación centrada para el checkbox */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border);
   border-left: 6px solid var(--primary);
-  transition: transform 0.2s;
+  transition: all 0.3s ease;
+}
+
+/* Cambio de color de borde si está completada */
+.task-item-card.completed-card {
+  border-left-color: var(--success);
+  opacity: 0.8;
 }
 
 .task-item-card:hover {
   transform: translateX(4px);
 }
 
+/* Estilo del Checkbox personalizado */
+.task-checkbox {
+  width: 20px;
+  height: 20px;
+  margin-right: 15px;
+  cursor: pointer;
+  accent-color: var(--success); /* Cambia el color del check a verde */
+}
+
 .task-content-text {
+  flex: 1; /* Para que ocupe todo el espacio central */
   font-weight: 500;
   color: var(--text-dark);
+  transition: all 0.3s ease;
+}
+
+/* Estilo de texto tachado */
+.task-content-text.completed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .task-actions-group {
@@ -185,7 +206,7 @@ h1 {
   border-color: #cbd5e1;
 }
 
-/* --- AWS AMPLIFY (CUANDO NO ESTÁS LOGUEADA) --- */
+/* --- AWS AMPLIFY --- */
 [data-amplify-authenticator] {
   margin-top: 20px;
   background: white !important;
@@ -199,62 +220,4 @@ h1 {
   text-align: center;
   margin-top: 20px;
   font-style: italic;
-}
-/* --- NUEVA ESTRUCTURA DE DASHBOARD (COLUMNAS) --- */
-.dashboard-tareas {
-  display: flex;
-  flex-direction: column; /* Por defecto una sobre otra en móvil */
-  gap: 20px;
-  width: 100%;
-  margin-top: 20px;
-}
-
-/* Cuando la pantalla sea más ancha que 768px, se ponen de lado */
-@media (min-width: 768px) {
-  .dashboard-tareas {
-    flex-direction: row; 
-    align-items: flex-start;
-    max-width: 900px; /* Ajustamos el ancho para que quepan las dos */
-  }
-  
-  /* Ajuste para el contenedor principal para que no se vea apretado */
-  .App {
-    max-width: 1000px; 
-  }
-}
-
-.column-tareas {
-  flex: 1;
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-  min-height: 200px;
-}
-
-.column-tareas h3 {
-  margin-top: 0;
-  font-size: 1.1rem;
-  color: var(--text-dark);
-  border-bottom: 2px solid var(--bg);
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-}
-
-/* --- ESTILO ESPECÍFICO PARA TAREAS REALIZADAS --- */
-.task-completed {
-  border-left: 6px solid #10b981 !important; /* Verde esmeralda */
-  opacity: 0.7;
-  background-color: #f0fdf4; /* Fondo verde muy suave */
-}
-
-.task-completed .task-content-text {
-  text-decoration: line-through;
-  color: #64748b;
-}
-
-/* Animación simple al mover */
-.task-item-card {
-  transition: all 0.3s ease;
 }
