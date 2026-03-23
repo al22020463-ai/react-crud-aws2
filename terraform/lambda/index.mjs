@@ -12,13 +12,11 @@ export const handler = async (event) => {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization" // Importante agregar Authorization
   };
 
   try {
-    const route = event.routeKey || `${event.httpMethod} ${event.resource}`;
-
-    switch (route) {
+    switch (event.routeKey) {
       case "OPTIONS /tareas":
         body = "OK";
         break;
@@ -32,12 +30,10 @@ export const handler = async (event) => {
       case "PUT /tareas":
         const requestJSON = JSON.parse(event.body);
         const item = {
-          id: String(requestJSON.id || Date.now()),
-          info: String(requestJSON.info || ""),
-          // Forzamos que guarde el booleano exacto
-          completada: requestJSON.completada === true 
+          id: requestJSON.id || Date.now().toString(),
+          info: requestJSON.info,
+          completed: requestJSON.completed ?? false // Si no viene (en POST), es false. Si viene (en PUT), usa el valor.
         };
-
         await dynamo.send(new PutCommand({ TableName: tableName, Item: item }));
         body = item;
         break;
@@ -46,17 +42,17 @@ export const handler = async (event) => {
         const { id } = JSON.parse(event.body);
         await dynamo.send(new DeleteCommand({
           TableName: tableName,
-          Key: { id: String(id) }
+          Key: { id }
         }));
         body = `Tarea ${id} eliminada`;
         break;
 
       default:
-        throw new Error(`Ruta no soportada: ${route}`);
+        throw new Error(`Ruta no soportada: ${event.routeKey}`);
     }
   } catch (err) {
     statusCode = 400;
-    body = { error: err.message };
+    body = err.message;
   }
 
   return { statusCode, body: JSON.stringify(body), headers };
