@@ -12,7 +12,7 @@ export const handler = async (event) => {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization" // Importante agregar Authorization
+    "Access-Control-Allow-Headers": "Content-Type, Authorization"
   };
 
   try {
@@ -29,11 +29,14 @@ export const handler = async (event) => {
       case "POST /tareas":
       case "PUT /tareas":
         const requestJSON = JSON.parse(event.body);
+        
+        // IMPORTANTE: Usamos 'completada' en español para que React lo reconozca
         const item = {
           id: requestJSON.id || Date.now().toString(),
           info: requestJSON.info,
-          completed: requestJSON.completed ?? false // Si no viene (en POST), es false. Si viene (en PUT), usa el valor.
+          completada: requestJSON.completada ?? false 
         };
+        
         await dynamo.send(new PutCommand({ TableName: tableName, Item: item }));
         body = item;
         break;
