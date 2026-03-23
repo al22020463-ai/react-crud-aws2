@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-// 1. Importaciones de AWS Amplify
-import { Amplify } from 'aws-amplify'; // Asegúrate de tener esta import
 import { Authenticator } from '@aws-amplify/ui-react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
-
-// --- PEGA AQUÍ TU Amplify.configure({ ... }) ---
 
 function App() {
   const [tareas, setTareas] = useState([]);
@@ -33,49 +29,62 @@ function App() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
-      setTareas(Array.isArray(data) ? data : []);
+      // Mapeamos para asegurar que 'completada' exista aunque el backend no la envíe inicialmente
+      const listaProcesada = (Array.isArray(data) ? data : []).map(t => ({
+        ...t,
+        completada: !!t.completada 
+      }));
+      setTareas(listaProcesada);
     } catch (error) {
       console.error("Error obteniendo tareas:", error);
     }
   };
 
   const manejarAccion = async () => {
-    if (!nuevaTarea.trim()) return;
-    const metodo = editandoId ? "PUT" : "POST";
-    
-    // Si estamos editando, buscamos la tarea original para no perder su estado 'completed'
-    const tareaOriginal = editandoId ? tareas.find(t => t.id === editandoId) : null;
-    
-    const body = editandoId 
-      ? { id: editandoId, info: nuevaTarea, completed: tareaOriginal?.completed || false } 
-      : { info: nuevaTarea, completed: false };
+  if (!nuevaTarea.trim()) return;
+  
+  const metodo = editandoId ? "PUT" : "POST";
+  
+  // BUSCAMOS LA TAREA PARA NO PERDER SU ESTADO DE COMPLETADA
+  const tareaExistente = tareas.find(t => t.id === editandoId);
+  const estadoCompletado = tareaExistente ? tareaExistente.completada : false;
 
-    await fetch(API_URL, {
-      method: metodo,
-      headers: await getHeaders(), 
-      body: JSON.stringify(body),
-    });
+  const body = editandoId 
+    ? { id: editandoId, info: nuevaTarea, completada: estadoCompletado } 
+    : { info: nuevaTarea, completada: false };
 
-    setNuevaTarea("");
-    setEditandoId(null);
-    obtenerTareas();
-  };
+  await fetch(API_URL, {
+    method: metodo,
+    headers: await getHeaders(), 
+    body: JSON.stringify(body),
+  });
 
-  // --- NUEVA FUNCIÓN: MARCAR / DESMARCAR COMPLETADO ---
-  const marcarCompletado = async (tarea) => {
-    const body = { 
-      id: tarea.id, 
-      info: tarea.info, 
-      completed: !tarea.completed // Cambiamos el estado actual
-    };
+  setNuevaTarea("");
+  setEditandoId(null);
+  obtenerTareas();
+};
 
-    await fetch(API_URL, {
-      method: "PUT",
-      headers: await getHeaders(),
-      body: JSON.stringify(body),
-    });
-    
-    obtenerTareas();
+  const toggleCompletada = async (tarea) => {
+    const nuevoEstado = !tarea.completada;
+
+    // Optimistic UI: Actualizamos localmente primero para que se sienta instantáneo
+    setTareas(tareas.map(t => t.id === tarea.id ? { ...t, completada: nuevoEstado } : t));
+
+    try {
+      await fetch(API_URL, {
+        method: "PUT",
+        headers: await getHeaders(),
+        body: JSON.stringify({ 
+          id: tarea.id, 
+          info: tarea.info, 
+          completada: nuevoEstado 
+        }),
+      });
+      obtenerTareas(); 
+    } catch (error) {
+      console.error("Error al actualizar estado:", error);
+      obtenerTareas(); // Revertir si falla
+    }
   };
 
   const eliminarTarea = async (id) => {
@@ -93,59 +102,80 @@ function App() {
 
   return (
     <Authenticator.Provider>
-      <div className="App">
-        <header>
-          <h1>Mis Tareas en AWS</h1>
+      <div className="kanban-app">
+        <header className="main-header">
+          <div className="header-content">
+            <h1>Mis Tareas en AWS</h1>
+          </div>
         </header>
-        <div className="separator"></div>
 
-        <Authenticator>
+        <Authenticator loginMechanisms={['email']}>
           {({ signOut, user }) => (
-            <main className="auth-card-container">
+            <main className="board-container">
               
-              <div className="user-info-panel">
-                <span className="user-email">Hola, <b>{user.signInDetails?.loginId}</b></span>
-                <button onClick={signOut} className="btn-logout">Cerrar Sesión</button>
-              </div>
+              <div className="toolbar">
+                <div className="user-pill">
+                  <div className="avatar">{user.signInDetails?.loginId?.charAt(0).toUpperCase()}</div>
+                  <span className="user-email">{user.signInDetails?.loginId}</span>
+                  <button onClick={signOut} className="btn-logout-icon" title="Cerrar Sesión">✕</button>
+                </div>
 
-              <div className="input-group">
-                <input 
-                  className="task-input"
-                  value={nuevaTarea} 
-                  onChange={(e) => setNuevaTarea(e.target.value)} 
-                  placeholder="¿Qué tarea tienes pendiente?" 
-                />
-                <button onClick={manejarAccion} className="btn-primary-action">
-                  {editandoId ? "Guardar" : "Agregar"}
-                </button>
+                <div className="input-group-modern">
+                  <input 
+                    className="task-input-modern"
+                    value={nuevaTarea} 
+                    onChange={(e) => setNuevaTarea(e.target.value)} 
+                    placeholder="¿Qué tarea tienes pendiente?" 
+                  />
+                  <button onClick={manejarAccion} className="btn-add-modern">
+                    {editandoId ? "✓" : "+"}
+                  </button>
+                  {editandoId && (
+                    <button onClick={() => {setEditandoId(null); setNuevaTarea("");}} className="btn-cancel-modern">✕</button>
+                  )}
+                </div>
               </div>
               
-              <ul className="task-list-display">
-                {tareas.map(t => (
-                  <li key={t.id} className="task-item-card">
-                    {/* CASILLA DE VERIFICACIÓN */}
-                    <input 
-                      type="checkbox"
-                      className="task-checkbox"
-                      checked={t.completed || false}
-                      onChange={() => marcarCompletado(t)}
-                    />
+              <div className="kanban-board">
+                {/* COLUMNA PENDIENTES */}
+                <div className="kanban-column pending">
+                  <div className="column-header">
+                    <h2>Pendientes</h2>
+                    <span className="count-pill">{tareas.filter(t => !t.completada).length}</span>
+                  </div>
+                  <div className="column-body">
+                    {tareas.filter(t => !t.completada).map(t => (
+                      <div key={t.id} className="task-card">
+                        <span className="task-text">{t.info}</span>
+                        <div className="task-actions">
+                          <button onClick={() => toggleCompletada(t)} className="action-icon check" title="Completar">✅</button>
+                          <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="action-icon edit">✏️</button>
+                          <button onClick={() => eliminarTarea(t.id)} className="action-icon delete">🗑️</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                    {/* TEXTO DE LA TAREA (Con estilo condicional) */}
-                    <span className={`task-content-text ${t.completed ? 'completed' : ''}`}>
-                      {t.info}
-                    </span>
-
-                    <div className="task-actions-group">
-                      <button onClick={() => {setNuevaTarea(t.info); setEditandoId(t.id);}} className="btn-icon">✏️</button>
-                      <button onClick={() => eliminarTarea(t.id)} className="btn-icon">🗑️</button>
-                    </div>
-                  </li>
-                ))}
-                {tareas.length === 0 && (
-                  <p className="no-tasks-msg">No hay tareas pendientes.</p>
-                )}
-              </ul>
+                {/* COLUMNA HECHAS */}
+                <div className="kanban-column completed">
+                  <div className="column-header">
+                    <h2>Hechas</h2>
+                    <span className="count-pill">{tareas.filter(t => t.completada).length}</span>
+                  </div>
+                  <div className="column-body">
+                    {tareas.filter(t => t.completada).map(t => (
+                      <div key={t.id} className="task-card done">
+                        <span className="task-text strikethrough">{t.info}</span>
+                        <div className="task-actions">
+                          <button onClick={() => toggleCompletada(t)} className="action-icon undo" title="Deshacer">↩️</button>
+                          <button onClick={() => eliminarTarea(t.id)} className="action-icon delete">🗑️</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </main>
           )}
         </Authenticator>
